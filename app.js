@@ -110,11 +110,7 @@
     chartEl.innerHTML = "";
 
     const wrapper = document.createElement("div");
-    wrapper.className = "children";
-    wrapper.style.paddingTop = "0";
-    // Top-level wrapper shouldn't draw the connector pseudo-elements
-    // We'll treat it as a simple flex container
-    wrapper.style.position = "relative";
+    wrapper.classList.add("children", "tree-root");
 
     for (const root of roots) {
       wrapper.appendChild(renderNode(root, 0));
@@ -255,7 +251,10 @@
   function applyDefaultExpansion(depth) {
     collapseAll();
     if (depth > 0) {
-      expandToDepth(chartEl, 0, depth);
+      const topWrapper = chartEl.querySelector(':scope > .children');
+      if (topWrapper) {
+        expandToDepth(topWrapper, 0, depth);
+      }
     }
   }
 
@@ -339,15 +338,4 @@
   expandBtn.addEventListener("click", expandAll);
   collapseBtn.addEventListener("click", collapseAll);
 
-  // Debounced resize handler
-  let resizeTimer;
-  window.addEventListener("resize", function () {
-    clearTimeout(resizeTimer);
-    resizeTimer = setTimeout(function () {
-      // Only re-apply if tree is rendered
-      if (chartEl.querySelector(".tree-node")) {
-        applyDefaultExpansion(getDefaultDepth());
-      }
-    }, 250);
-  });
 })();

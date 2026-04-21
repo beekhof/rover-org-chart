@@ -112,6 +112,11 @@ main#chart {
   margin-top: 0;
 }
 
+.children.tree-root {
+  padding-top: 0;
+  position: relative;
+}
+
 .children.collapsed {
   display: none;
 }
