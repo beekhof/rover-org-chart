@@ -5,6 +5,7 @@
   const fileInput = document.getElementById("file-input");
   const uploadBtn = document.getElementById("upload-btn");
   const expandBtn = document.getElementById("expand-btn");
+  const mgmtBtn = document.getElementById("mgmt-btn");
   const collapseBtn = document.getElementById("collapse-btn");
 
   // ── CSV Parsing ──
@@ -248,6 +249,28 @@
     });
   }
 
+  function expandManagers() {
+    collapseAll();
+    var treeNodes = chartEl.querySelectorAll(".tree-node");
+    treeNodes.forEach(function (treeNode) {
+      var childrenContainer = treeNode.querySelector(":scope > .children");
+      if (!childrenContainer) return;
+
+      var hasManagerChild = childrenContainer.querySelector(
+        ":scope > .tree-node > .node-card.manager"
+      );
+      if (!hasManagerChild) return;
+
+      childrenContainer.classList.remove("collapsed");
+      var card = treeNode.querySelector(":scope > .node-card");
+      if (card) {
+        card.setAttribute("aria-expanded", "true");
+        var toggle = card.querySelector(".toggle");
+        if (toggle) toggle.textContent = "−";
+      }
+    });
+  }
+
   // ── Default expansion depth ──
 
   function getDefaultDepth() {
@@ -345,6 +368,7 @@
   });
 
   expandBtn.addEventListener("click", expandAll);
+  mgmtBtn.addEventListener("click", expandManagers);
   collapseBtn.addEventListener("click", collapseAll);
 
 })();

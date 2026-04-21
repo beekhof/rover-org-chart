@@ -66,6 +66,11 @@ header h1 {
   color: #fff;
 }
 
+.btn-mgmt {
+  background: #805ad5;
+  color: #fff;
+}
+
 .btn-collapse {
   background: transparent;
   color: #e2e8f0;
