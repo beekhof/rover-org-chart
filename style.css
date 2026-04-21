@@ -79,9 +79,6 @@ header h1 {
 /* ── Chart area ── */
 main#chart {
   padding: 80px 32px 48px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
   overflow-x: auto;
   min-height: calc(100vh - 56px);
 }
@@ -115,6 +112,8 @@ main#chart {
 .children.tree-root {
   padding-top: 0;
   position: relative;
+  width: fit-content;
+  margin: 0 auto;
 }
 
 .children.collapsed {
