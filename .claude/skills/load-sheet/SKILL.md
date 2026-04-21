@@ -40,14 +40,14 @@ Derive a short, URL-friendly filename from the spreadsheet name:
 - Append `.csv`
 - Example: "My Org Chart 2026" → `my-org-chart-2026.csv`
 
-Make sure the filename is added to `.gitignore` if it isn't already (these are personal data files that shouldn't be committed).
+The `data/` directory is gitignored, so downloaded files are safe from accidental commits.
 
 ### 3. Download as CSV
 
 Use the raw values API (not `+read`, which doesn't support `--format csv` properly):
 
 ```bash
-gws sheets spreadsheets values get --params '{"spreadsheetId": "ID", "range": "SheetName"}' --format csv 2>/dev/null > <project-root>/<filename>.csv
+gws sheets spreadsheets values get --params '{"spreadsheetId": "ID", "range": "SheetName"}' --format csv 2>/dev/null > <project-root>/data/<filename>.csv
 ```
 
 Default to `Sheet1` if no sheet name was specified.
@@ -55,14 +55,14 @@ Default to `Sheet1` if no sheet name was specified.
 Verify the file is non-empty and contains the expected columns (Name, Title, Manager):
 
 ```bash
-head -1 <project-root>/<filename>.csv
+head -1 <project-root>/data/<filename>.csv
 ```
 
 ### 4. Provide the URL
 
 The app supports auto-loading via a `?file=` URL parameter. Tell the user to open:
 
-`http://localhost:8080?file=<filename>.csv`
+`http://localhost:8080?file=data/<filename>.csv`
 
 To start the dev server if not already running:
 

@@ -38,11 +38,13 @@ Carol,Senior Engineer,Bob
 
 ### Auto-Load from URL
 
-Append `?file=<filename>.csv` to load a CSV automatically:
+Append `?file=<path>` to load a CSV automatically:
 
 ```
-http://localhost:8080?file=my-org.csv
+http://localhost:8080?file=data/my-org.csv
 ```
+
+Personal CSV files go in the `data/` directory, which is gitignored.
 
 ### Claude Code Skill: `/load-sheet`
 
