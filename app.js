@@ -80,7 +80,6 @@
   function buildTree(people) {
     const map = new Map();
 
-    // Create all nodes first
     for (const p of people) {
       map.set(p.name, {
         name: p.name,
@@ -90,9 +89,19 @@
       });
     }
 
+    for (const p of people) {
+      if (p.manager && !map.has(p.manager)) {
+        map.set(p.manager, {
+          name: p.manager,
+          title: "",
+          manager: "",
+          children: [],
+        });
+      }
+    }
+
     const roots = [];
 
-    // Link children to parents
     for (const node of map.values()) {
       if (node.manager && map.has(node.manager)) {
         map.get(node.manager).children.push(node);
