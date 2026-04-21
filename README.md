@@ -54,7 +54,7 @@ If you use [Claude Code](https://docs.anthropic.com/en/docs/claude-code), the in
 /load-sheet 'My Spreadsheet Name' use Sheet1
 ```
 
-Requires the `gws` CLI to be installed and authenticated.
+Requires the [`gws` CLI](https://github.com/nicholasgasior/gws) to be installed and authenticated (`gws auth login`).
 
 ### Per-Node Expand
 
