@@ -196,11 +196,6 @@ main#chart {
 
 .node-card.manager {
   border-left: 2px solid #4299e1;
-  cursor: pointer;
-}
-
-.node-card.manager:hover {
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1), 0 2px 4px rgba(0, 0, 0, 0.06);
 }
 
 .node-card.leaf {
@@ -232,6 +227,19 @@ main#chart {
   border-top: 1px solid #e2e8f0;
   margin-top: 8px;
   padding-top: 8px;
+  cursor: pointer;
+  transition: color 0.15s;
+}
+
+.node-card .reports:hover {
+  color: #4299e1;
+  text-decoration: underline;
+}
+
+.node-card .reports:focus-visible {
+  outline: 2px solid #4299e1;
+  outline-offset: 2px;
+  border-radius: 2px;
 }
 
 .node-card .toggle {
@@ -241,8 +249,35 @@ main#chart {
   font-size: 14px;
   font-weight: 700;
   color: #a0aec0;
-  pointer-events: none;
+  pointer-events: auto;
   line-height: 1;
+  cursor: pointer;
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  transition: background-color 0.15s, color 0.15s;
+}
+
+.node-card .toggle:hover {
+  background-color: #edf2f7;
+  color: #4a5568;
+}
+
+.node-card .toggle:focus-visible {
+  outline: 2px solid #805ad5;
+  outline-offset: 1px;
+}
+
+@keyframes flash-no-managers {
+  0%, 100% { color: #a0aec0; }
+  50% { color: #e53e3e; }
+}
+
+.node-card .toggle.flash-no-managers {
+  animation: flash-no-managers 0.6s ease;
 }
 
 /* ── Responsiveness ── */

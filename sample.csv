@@ -1,0 +1,19 @@
+Name,Title,Manager
+Sarah Chen,CEO,
+Marcus Johnson,CTO,Sarah Chen
+Lisa Park,CFO,Sarah Chen
+David Kim,VP Engineering,Marcus Johnson
+Rachel Adams,VP Product,Marcus Johnson
+Tom Wilson,Director of Sales,Lisa Park
+Amy Liu,Controller,Lisa Park
+James Lee,Sr Engineer,David Kim
+Nina Patel,Sr Engineer,David Kim
+Carlos Ruiz,Engineer,David Kim
+Emily Zhang,Product Manager,Rachel Adams
+Ben Cooper,UX Designer,Rachel Adams
+Michael Brown,Sales Manager,Tom Wilson
+Jessica Taylor,Account Executive,Tom Wilson
+Ryan O'Brien,Account Executive,Tom Wilson
+Sophie Martin,Financial Analyst,Amy Liu
+Alex Rivera,Engineer,James Lee
+Priya Sharma,Engineer,Nina Patel

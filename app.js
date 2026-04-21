@@ -150,38 +150,48 @@
     card.appendChild(titleEl);
 
     if (isManager) {
-      // Reports count
+      // Reports count — click to expand/collapse all directs
       const reportsEl = document.createElement("div");
       reportsEl.className = "reports";
       reportsEl.textContent =
         node.children.length +
         " direct report" +
         (node.children.length !== 1 ? "s" : "");
-      card.appendChild(reportsEl);
-
-      // Toggle indicator
-      const toggleEl = document.createElement("span");
-      toggleEl.className = "toggle";
-      toggleEl.textContent = "−"; // minus sign
-      card.appendChild(toggleEl);
-
-      // Accessibility
-      card.setAttribute("tabindex", "0");
-      card.setAttribute("role", "button");
-      card.setAttribute("aria-expanded", "true");
-
-      // Click handler
-      card.addEventListener("click", function () {
-        toggleNode(treeNode);
+      reportsEl.setAttribute("tabindex", "0");
+      reportsEl.setAttribute("role", "button");
+      reportsEl.setAttribute("title", "Expand all direct reports");
+      reportsEl.addEventListener("click", function (e) {
+        e.stopPropagation();
+        toggleNodeAll(treeNode);
       });
-
-      // Keyboard handler
-      card.addEventListener("keydown", function (e) {
+      reportsEl.addEventListener("keydown", function (e) {
         if (e.key === "Enter" || e.key === " ") {
           e.preventDefault();
-          toggleNode(treeNode);
+          toggleNodeAll(treeNode);
         }
       });
+      card.appendChild(reportsEl);
+
+      // Toggle indicator — click to expand/collapse managers only
+      const toggleEl = document.createElement("span");
+      toggleEl.className = "toggle";
+      toggleEl.textContent = "−";
+      toggleEl.setAttribute("tabindex", "0");
+      toggleEl.setAttribute("role", "button");
+      toggleEl.setAttribute("title", "Expand managers only");
+      toggleEl.addEventListener("click", function (e) {
+        e.stopPropagation();
+        toggleNodeManagers(treeNode);
+      });
+      toggleEl.addEventListener("keydown", function (e) {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          toggleNodeManagers(treeNode);
+        }
+      });
+      card.appendChild(toggleEl);
+
+      card.setAttribute("aria-expanded", "true");
     }
 
     treeNode.appendChild(card);
@@ -203,20 +213,96 @@
 
   // ── Toggle / Expand / Collapse ──
 
-  function toggleNode(treeNodeEl) {
-    const childrenContainer = treeNodeEl.querySelector(":scope > .children");
+  function updateCardState(card, expanded) {
+    if (!card) return;
+    card.setAttribute("aria-expanded", String(expanded));
+    var toggle = card.querySelector(".toggle");
+    if (toggle) toggle.textContent = expanded ? "−" : "+";
+  }
+
+  function clearIcHiddenSubtree(treeNodeEl) {
+    treeNodeEl.querySelectorAll(".tree-node.ic-hidden").forEach(function (tn) {
+      tn.classList.remove("ic-hidden");
+    });
+  }
+
+  function collapseSubtree(treeNodeEl) {
+    var childrenContainer = treeNodeEl.querySelector(":scope > .children");
+    if (!childrenContainer) return;
+    childrenContainer.classList.add("collapsed");
+    treeNodeEl.removeAttribute("data-expand-mode");
+    clearIcHiddenSubtree(treeNodeEl);
+    updateCardState(treeNodeEl.querySelector(":scope > .node-card"), false);
+  }
+
+  function flashNoManagers(card) {
+    var toggle = card.querySelector(".toggle");
+    if (!toggle) return;
+    toggle.classList.add("flash-no-managers");
+    setTimeout(function () {
+      toggle.classList.remove("flash-no-managers");
+    }, 600);
+  }
+
+  function expandManagersSubtree(treeNodeEl) {
+    var childrenContainer = treeNodeEl.querySelector(":scope > .children");
     if (!childrenContainer) return;
 
-    const card = treeNodeEl.querySelector(":scope > .node-card");
-    const isCollapsed = childrenContainer.classList.toggle("collapsed");
-
-    if (card) {
-      card.setAttribute("aria-expanded", String(!isCollapsed));
-      const toggle = card.querySelector(".toggle");
-      if (toggle) {
-        toggle.textContent = isCollapsed ? "+" : "−";
+    var childNodes = childrenContainer.querySelectorAll(":scope > .tree-node");
+    childNodes.forEach(function (child) {
+      var childCard = child.querySelector(":scope > .node-card");
+      if (childCard && childCard.classList.contains("leaf")) {
+        child.classList.add("ic-hidden");
       }
+    });
+
+    childrenContainer.classList.remove("collapsed");
+    treeNodeEl.setAttribute("data-expand-mode", "managers");
+    updateCardState(treeNodeEl.querySelector(":scope > .node-card"), true);
+
+    childNodes.forEach(function (child) {
+      var childCard = child.querySelector(":scope > .node-card");
+      if (childCard && childCard.classList.contains("manager")) {
+        var childChildren = child.querySelector(":scope > .children");
+        if (childChildren && childChildren.querySelector(":scope > .tree-node > .node-card.manager")) {
+          expandManagersSubtree(child);
+        }
+      }
+    });
+  }
+
+  function toggleNodeAll(treeNodeEl) {
+    var childrenContainer = treeNodeEl.querySelector(":scope > .children");
+    if (!childrenContainer) return;
+
+    if (!childrenContainer.classList.contains("collapsed")) {
+      collapseSubtree(treeNodeEl);
+    } else {
+      clearIcHiddenSubtree(treeNodeEl);
+      childrenContainer.classList.remove("collapsed");
+      treeNodeEl.setAttribute("data-expand-mode", "all");
+      updateCardState(treeNodeEl.querySelector(":scope > .node-card"), true);
     }
+  }
+
+  function toggleNodeManagers(treeNodeEl) {
+    var childrenContainer = treeNodeEl.querySelector(":scope > .children");
+    if (!childrenContainer) return;
+
+    if (!childrenContainer.classList.contains("collapsed")) {
+      collapseSubtree(treeNodeEl);
+      return;
+    }
+
+    var hasManagerChild = childrenContainer.querySelector(
+      ":scope > .tree-node > .node-card.manager"
+    );
+    if (!hasManagerChild) {
+      flashNoManagers(treeNodeEl.querySelector(":scope > .node-card"));
+      return;
+    }
+
+    expandManagersSubtree(treeNodeEl);
   }
 
   function clearIcHidden() {
@@ -227,6 +313,9 @@
 
   function expandAll() {
     clearIcHidden();
+    chartEl.querySelectorAll("[data-expand-mode]").forEach(function (tn) {
+      tn.removeAttribute("data-expand-mode");
+    });
     const containers = chartEl.querySelectorAll(".children.collapsed");
     containers.forEach(function (c) {
       c.classList.remove("collapsed");
@@ -242,6 +331,9 @@
 
   function collapseAll() {
     clearIcHidden();
+    chartEl.querySelectorAll("[data-expand-mode]").forEach(function (tn) {
+      tn.removeAttribute("data-expand-mode");
+    });
     const containers = chartEl.querySelectorAll(
       ".tree-node > .children"
     );
@@ -276,6 +368,7 @@
       if (!hasManagerChild) return;
 
       childrenContainer.classList.remove("collapsed");
+      treeNode.setAttribute("data-expand-mode", "managers");
       var card = treeNode.querySelector(":scope > .node-card");
       if (card) {
         card.setAttribute("aria-expanded", "true");
