@@ -338,6 +338,13 @@
     }
 
     card.addEventListener("click", function () {
+      if (selectedPerson === node.name) {
+        if (panelHasUnsavedChanges()) {
+          if (!confirm("You have unsaved changes. Discard them?")) return;
+        }
+        closePanel();
+        return;
+      }
       if (selectedPerson && panelHasUnsavedChanges()) {
         if (!confirm("You have unsaved changes. Discard them?")) return;
       }
@@ -734,6 +741,15 @@
       if (!confirm("You have unsaved changes. Discard them?")) return;
     }
     closePanel();
+  });
+
+  document.addEventListener("keydown", function (e) {
+    if (e.key === "Escape" && selectedPerson) {
+      if (panelHasUnsavedChanges()) {
+        if (!confirm("You have unsaved changes. Discard them?")) return;
+      }
+      closePanel();
+    }
   });
 
   panelCancelBtn.addEventListener("click", function () {
