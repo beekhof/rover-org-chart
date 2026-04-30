@@ -19,6 +19,12 @@
   var saveCsvBtn = document.getElementById("save-csv-btn");
   var resetBtn = document.getElementById("reset-btn");
   var legendEl = document.getElementById("change-legend");
+  var statsBar = document.getElementById("stats-bar");
+  var statTotal = document.getElementById("stat-total");
+  var statAssoc = document.getElementById("stat-associates");
+  var statManagers = document.getElementById("stat-managers");
+  var statMgrOfMgr = document.getElementById("stat-mgr-of-mgr");
+  var statRatio = document.getElementById("stat-ratio");
 
   let originalPeople = [];
   let currentPeople = [];
@@ -271,6 +277,58 @@
     }
 
     return roots;
+  }
+
+  // ── Stats ──
+
+  function computeOrgStats(roots) {
+    var associates = 0;
+    var managers = 0;
+    var managersOfManagers = 0;
+
+    function walk(node) {
+      if (node.children.length === 0) {
+        associates++;
+      } else {
+        managers++;
+        var hasManagerChild = false;
+        for (var i = 0; i < node.children.length; i++) {
+          if (node.children[i].children.length > 0) {
+            hasManagerChild = true;
+          }
+          walk(node.children[i]);
+        }
+        if (hasManagerChild) {
+          managersOfManagers++;
+        }
+      }
+    }
+
+    for (var i = 0; i < roots.length; i++) {
+      walk(roots[i]);
+    }
+
+    return {
+      total: associates + managers,
+      associates: associates,
+      managers: managers,
+      managersOfManagers: managersOfManagers,
+      ratio: managers > 0 ? (associates / managers).toFixed(1) : "N/A"
+    };
+  }
+
+  function updateStatsBar(roots) {
+    if (roots.length === 0) {
+      statsBar.hidden = true;
+      return;
+    }
+    var stats = computeOrgStats(roots);
+    statTotal.textContent = stats.total;
+    statAssoc.textContent = stats.associates;
+    statManagers.textContent = stats.managers;
+    statMgrOfMgr.textContent = stats.managersOfManagers;
+    statRatio.textContent = stats.ratio;
+    statsBar.hidden = false;
   }
 
   // ── Rendering ──
@@ -662,6 +720,7 @@
   function rebuildAndRender() {
     var roots = buildTree(currentPeople);
     renderTree(roots);
+    updateStatsBar(roots);
     if (currentViewMode === "expand") {
       expandAll();
     } else if (currentViewMode === "managers") {
