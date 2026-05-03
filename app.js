@@ -476,6 +476,20 @@
       card.appendChild(toggleEl);
 
       card.setAttribute("aria-expanded", "true");
+
+      var tooltip = document.createElement("div");
+      tooltip.className = "org-tooltip";
+      card.appendChild(tooltip);
+      card.addEventListener("mouseenter", function () {
+        var s = computeOrgStats([node]);
+        tooltip.textContent =
+          s.total + " Total · " +
+          s.associates + " Associates · " +
+          s.managers + " Managers · " +
+          s.managersOfManagers + " Mgrs of Mgrs · " +
+          s.openRoles + " Open · " +
+          s.ratio + " Assoc/Mgr";
+      });
     }
 
     treeNode.appendChild(card);
