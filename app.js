@@ -35,6 +35,7 @@
   var isUpdating = false;
   var draggedPersonName = null;
   var importedFormat = "standard";
+  var currentDropTarget = null;
 
   function getChanges() {
     var changes = new Map();
@@ -799,6 +800,12 @@
 
   // ── Drag and Drop ──
 
+  // Global dragover handler to prevent browser from canceling drag
+  // This is needed or the drag ends immediately
+  document.addEventListener("dragover", function(e) {
+    e.preventDefault(); // Don't stop propagation - let it reach card handlers
+  });
+
   function isTouchDevice() {
     return 'ontouchstart' in window || navigator.maxTouchPoints > 0;
   }
@@ -929,16 +936,38 @@
     e.dataTransfer.effectAllowed = "move";
     e.dataTransfer.setData("text/plain", draggedPersonName);
 
-    card.classList.add("drag-source");
+    // Create a custom drag image (clone of the card)
+    var dragImage = card.cloneNode(true);
+    dragImage.style.position = "absolute";
+    dragImage.style.top = "-9999px";
+    dragImage.style.opacity = "0.8";
+    document.body.appendChild(dragImage);
+    e.dataTransfer.setDragImage(dragImage, 50, 20);
 
-    highlightDropTargets(draggedPersonName);
-    addRootDropZone();
+    // Clean up the drag image after drag starts
+    setTimeout(function() {
+      document.body.removeChild(dragImage);
+    }, 0);
+
+    // Use setTimeout to add visual feedback AFTER dragstart completes
+    // This is critical - modifying DOM during dragstart causes browser to cancel the drag
+    setTimeout(function() {
+      card.classList.add("drag-source");
+      highlightDropTargets(draggedPersonName);
+      addRootDropZone();
+    }, 0);
   }
 
   function onDragEnd(e) {
     var card = e.target.closest(".node-card");
     if (card) {
       card.classList.remove("drag-source");
+    }
+
+    // Clear current drop target highlight
+    if (currentDropTarget) {
+      currentDropTarget.classList.remove("drag-over-valid", "drag-over-invalid");
+      currentDropTarget = null;
     }
 
     clearDropTargetHighlights();
@@ -952,40 +981,41 @@
     e.preventDefault();
 
     var card = e.target.closest(".node-card, .root-drop-zone");
-    if (!card) return;
 
-    var targetName = card.getAttribute("data-name");
-    var isValid = card.getAttribute("data-drop-valid") === "true";
+    // Only update if we've moved to a different card
+    if (card !== currentDropTarget) {
+      // Clear previous highlight
+      if (currentDropTarget) {
+        currentDropTarget.classList.remove("drag-over-valid", "drag-over-invalid");
+      }
 
-    if (isValid) {
-      e.dataTransfer.dropEffect = "move";
-    } else {
-      e.dataTransfer.dropEffect = "none";
+      // Update current target and add new highlight
+      currentDropTarget = card;
+
+      if (card) {
+        var isValid = card.getAttribute("data-drop-valid") === "true";
+
+        if (isValid) {
+          e.dataTransfer.dropEffect = "move";
+          card.classList.add("drag-over-valid");
+        } else {
+          e.dataTransfer.dropEffect = "none";
+          card.classList.add("drag-over-invalid");
+        }
+      }
+    } else if (card) {
+      // Still over same card, just set drop effect
+      var isValid = card.getAttribute("data-drop-valid") === "true";
+      e.dataTransfer.dropEffect = isValid ? "move" : "none";
     }
   }
 
   function onDragEnter(e) {
-    if (isUpdating || !draggedPersonName) return;
-
-    var card = e.target.closest(".node-card, .root-drop-zone");
-    if (!card) return;
-
-    var isValid = card.getAttribute("data-drop-valid") === "true";
-
-    if (isValid) {
-      card.classList.add("drag-over-valid");
-      card.classList.remove("drag-over-invalid");
-    } else {
-      card.classList.add("drag-over-invalid");
-      card.classList.remove("drag-over-valid");
-    }
+    // Disabled - using dragover for highlights instead to avoid flicker
   }
 
   function onDragLeave(e) {
-    var card = e.target.closest(".node-card, .root-drop-zone");
-    if (!card) return;
-
-    card.classList.remove("drag-over-valid", "drag-over-invalid");
+    // Disabled - using dragover for highlights instead to avoid flicker
   }
 
   function onDrop(e) {

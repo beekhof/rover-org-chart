@@ -211,6 +211,8 @@ main#chart {
   max-width: 240px;
   text-align: left;
   transition: box-shadow 0.15s;
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 .node-card:focus-visible {
