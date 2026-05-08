@@ -37,6 +37,44 @@
   var importedFormat = "standard";
   var currentDropTarget = null;
 
+  const STORAGE_KEY = "org-chart-wip";
+
+  function saveState() {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({
+        originalPeople: originalPeople,
+        currentPeople: currentPeople,
+        importedFormat: importedFormat
+      }));
+    } catch (e) {
+      console.warn("Failed to save state to localStorage:", e);
+    }
+  }
+
+  function loadState() {
+    try {
+      var saved = localStorage.getItem(STORAGE_KEY);
+      if (!saved) return false;
+
+      var state = JSON.parse(saved);
+      originalPeople = state.originalPeople || [];
+      currentPeople = state.currentPeople || [];
+      importedFormat = state.importedFormat || "standard";
+      return true;
+    } catch (e) {
+      console.warn("Failed to load state from localStorage:", e);
+      return false;
+    }
+  }
+
+  function clearState() {
+    try {
+      localStorage.removeItem(STORAGE_KEY);
+    } catch (e) {
+      console.warn("Failed to clear state from localStorage:", e);
+    }
+  }
+
   function getChanges() {
     var changes = new Map();
     var origMap = new Map(originalPeople.map(function (p) {
@@ -910,6 +948,7 @@
       return p;
     });
 
+    saveState(); // Save state after drag-drop reassignment
     rebuildAndRender();
     saveCsvBtn.hidden = false;
     resetBtn.hidden = false;
@@ -1067,12 +1106,13 @@
     } else {
       var fullPeople = addMissingManagers(result.people);
       originalPeople = fullPeople.map(function (p) {
-        return { name: p.name, title: p.title, manager: p.manager };
+        return { name: p.name, title: p.title, manager: p.manager, location: p.location || "", userId: p.userId || "" };
       });
       currentPeople = fullPeople.map(function (p) {
-        return { name: p.name, title: p.title, manager: p.manager };
+        return { name: p.name, title: p.title, manager: p.manager, location: p.location || "", userId: p.userId || "" };
       });
       selectedPerson = null;
+      clearState(); // Clear any previous session state when loading new CSV
       rebuildAndRender();
     }
   }
@@ -1151,6 +1191,20 @@
       .then(function (r) { return r.text(); })
       .then(loadCSVText)
       .catch(function () { showError("Could not load " + autoFile); });
+  } else {
+    // Try to load saved state from previous session
+    var hasState = loadState();
+    if (hasState) {
+      if (confirm("Resume previous session?")) {
+        rebuildAndRender();
+        updateToolbarButtons();
+        updateLegend();
+      } else {
+        clearState();
+        originalPeople = [];
+        currentPeople = [];
+      }
+    }
   }
 
   expandBtn.addEventListener("click", function () { currentViewMode = "expand"; expandAll(); });
@@ -1194,6 +1248,7 @@
       return { name: p.name, title: p.title, manager: p.manager, location: p.location || "", userId: p.userId || "" };
     });
 
+    saveState(); // Save state after panel edit
     var savedName = selectedPerson;
     rebuildAndRender();
     updateToolbarButtons();
@@ -1258,9 +1313,10 @@
     if (!confirm("Discard all changes?")) return;
 
     currentPeople = originalPeople.map(function (p) {
-      return { name: p.name, title: p.title, manager: p.manager };
+      return { name: p.name, title: p.title, manager: p.manager, location: p.location || "", userId: p.userId || "" };
     });
     selectedPerson = null;
+    clearState(); // Clear saved state when resetting
     closePanel();
     rebuildAndRender();
     updateToolbarButtons();
