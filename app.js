@@ -12,6 +12,7 @@
   var panelName = document.getElementById("panel-name");
   var panelTitle = document.getElementById("panel-title");
   var panelManager = document.getElementById("panel-manager");
+  var panelLocation = document.getElementById("panel-location");
   var panelReports = document.getElementById("panel-reports");
   var panelCloseBtn = document.getElementById("panel-close-btn");
   var panelSaveBtn = document.getElementById("panel-save-btn");
@@ -108,6 +109,7 @@
     }
 
     panelManager.value = person.manager;
+    panelLocation.value = person.location || "";
 
     // Populate direct reports
     panelReports.innerHTML = "";
@@ -163,7 +165,8 @@
     if (!selectedPerson) return false;
     var person = currentPeople.find(function (p) { return p.name === selectedPerson; });
     if (!person) return false;
-    return panelTitle.value !== person.title || panelManager.value !== person.manager;
+    var locationChanged = panelLocation.value.trim() !== (person.location || "");
+    return panelTitle.value !== person.title || panelManager.value !== person.manager || locationChanged;
   }
 
   function updateToolbarButtons() {
@@ -188,6 +191,7 @@
     const nameIdx = headers.indexOf("name");
     const titleIdx = headers.indexOf("title");
     const managerIdx = headers.indexOf("manager");
+    const locationIdx = headers.indexOf("location");
 
     if (nameIdx === -1 || titleIdx === -1 || managerIdx === -1) {
       return { error: "columns" };
@@ -203,10 +207,11 @@
       const name = cols[nameIdx].trim();
       const title = cols[titleIdx].trim();
       const manager = cols[managerIdx].trim();
+      const location = locationIdx !== -1 ? cols[locationIdx].trim() : "";
 
       if (!name) continue;
 
-      people.push({ name, title, manager });
+      people.push({ name, title, manager, location });
     }
 
     if (people.length === 0) return { error: "no_data" };
@@ -254,6 +259,7 @@
         name: p.name,
         title: p.title,
         manager: p.manager,
+        location: p.location || "",
         children: [],
       });
     }
@@ -264,6 +270,7 @@
           name: p.manager,
           title: "",
           manager: "",
+          location: "",
           children: [],
         });
       }
@@ -394,6 +401,14 @@
     titleEl.className = "title";
     titleEl.textContent = node.title;
     card.appendChild(titleEl);
+
+    // Location
+    if (node.location) {
+      const locationEl = document.createElement("div");
+      locationEl.className = "location";
+      locationEl.textContent = node.location;
+      card.appendChild(locationEl);
+    }
 
     var change = changes.get(node.name);
     if (change) {
@@ -833,7 +848,8 @@
         return {
           name: p.name,
           title: p.title,
-          manager: newManager
+          manager: newManager,
+          location: p.location || ""
         };
       }
       return p;
@@ -1008,7 +1024,7 @@
       var mgr = people[i].manager;
       if (mgr && !names.has(mgr)) {
         names.add(mgr);
-        toAdd.push({ name: mgr, title: "", manager: "" });
+        toAdd.push({ name: mgr, title: "", manager: "", location: "" });
       }
     }
     return people.concat(toAdd);
@@ -1091,12 +1107,13 @@
 
     var newTitle = panelTitle.value.trim();
     var newManager = panelManager.value;
+    var newLocation = panelLocation.value.trim();
 
     currentPeople = currentPeople.map(function (p) {
       if (p.name === selectedPerson) {
-        return { name: p.name, title: newTitle, manager: newManager };
+        return { name: p.name, title: newTitle, manager: newManager, location: newLocation };
       }
-      return { name: p.name, title: p.title, manager: p.manager };
+      return { name: p.name, title: p.title, manager: p.manager, location: p.location || "" };
     });
 
     var savedName = selectedPerson;
@@ -1107,11 +1124,11 @@
   });
 
   saveCsvBtn.addEventListener("click", function () {
-    var lines = ["Name,Title,Manager"];
+    var lines = ["Name,Title,Manager,Location"];
 
     for (var i = 0; i < currentPeople.length; i++) {
       var p = currentPeople[i];
-      lines.push(csvEscape(p.name) + "," + csvEscape(p.title) + "," + csvEscape(p.manager));
+      lines.push(csvEscape(p.name) + "," + csvEscape(p.title) + "," + csvEscape(p.manager) + "," + csvEscape(p.location || ""));
     }
 
     var csvText = lines.join("\n") + "\n";

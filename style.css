@@ -245,6 +245,12 @@ main#chart {
   color: #718096;
 }
 
+.node-card .location {
+  font-size: 11px;
+  color: #718096;
+  margin-top: 2px;
+}
+
 .node-card .reports {
   font-size: 11px;
   color: #a0aec0;
