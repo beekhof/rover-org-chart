@@ -31,6 +31,8 @@
   let currentPeople = [];
   let selectedPerson = null;
   var currentViewMode = "default";
+  var isUpdating = false;
+  var draggedPersonName = null;
 
   function getChanges() {
     var changes = new Map();
@@ -497,6 +499,18 @@
       });
     }
 
+    // Drag and drop support
+    if (!isTouchDevice()) {
+      card.setAttribute("draggable", "true");
+      card.setAttribute("data-name", node.name);
+      card.addEventListener("dragstart", onDragStart);
+      card.addEventListener("dragend", onDragEnd);
+      card.addEventListener("dragover", onDragOver);
+      card.addEventListener("dragenter", onDragEnter);
+      card.addEventListener("dragleave", onDragLeave);
+      card.addEventListener("drop", onDrop);
+    }
+
     treeNode.appendChild(card);
 
     // Children container
@@ -721,6 +735,215 @@
     });
   }
 
+  // ── Drag and Drop ──
+
+  function isTouchDevice() {
+    return 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+  }
+
+  function canDropOn(draggedName, targetName) {
+    if (!draggedName || !targetName) return false;
+    if (draggedName === targetName) return false;
+
+    var subtreeNames = getSubtreeNames(draggedName);
+    return subtreeNames.indexOf(targetName) === -1;
+  }
+
+  function highlightDropTargets(draggedName) {
+    var cards = document.querySelectorAll(".node-card");
+    for (var i = 0; i < cards.length; i++) {
+      var card = cards[i];
+      var targetName = card.getAttribute("data-name");
+      if (!targetName || targetName === draggedName) continue;
+
+      card.classList.add("drag-active");
+      if (canDropOn(draggedName, targetName)) {
+        card.setAttribute("data-drop-valid", "true");
+      } else {
+        card.setAttribute("data-drop-valid", "false");
+      }
+    }
+  }
+
+  function clearDropTargetHighlights() {
+    var cards = document.querySelectorAll(".node-card");
+    for (var i = 0; i < cards.length; i++) {
+      cards[i].classList.remove("drag-active", "drag-over-valid", "drag-over-invalid");
+      cards[i].removeAttribute("data-drop-valid");
+    }
+  }
+
+  function addRootDropZone() {
+    var existingZone = document.getElementById("root-drop-zone");
+    if (existingZone) return;
+
+    var zone = document.createElement("div");
+    zone.id = "root-drop-zone";
+    zone.className = "root-drop-zone";
+    zone.textContent = "Drop here to remove manager (top-level)";
+    zone.setAttribute("data-name", "");
+    zone.setAttribute("data-drop-valid", "true");
+
+    zone.addEventListener("dragover", onDragOver);
+    zone.addEventListener("dragenter", onDragEnter);
+    zone.addEventListener("dragleave", onDragLeave);
+    zone.addEventListener("drop", onDrop);
+
+    var firstChild = chartEl.firstChild;
+    if (firstChild) {
+      chartEl.insertBefore(zone, firstChild);
+    } else {
+      chartEl.appendChild(zone);
+    }
+  }
+
+  function removeRootDropZone() {
+    var zone = document.getElementById("root-drop-zone");
+    if (zone) {
+      zone.remove();
+    }
+  }
+
+  function flashMovedCard(personName) {
+    setTimeout(function() {
+      var cards = document.querySelectorAll(".node-card");
+      for (var i = 0; i < cards.length; i++) {
+        if (cards[i].getAttribute("data-name") === personName) {
+          cards[i].classList.add("flash-moved");
+          setTimeout(function() {
+            cards[i].classList.remove("flash-moved");
+          }, 500);
+          break;
+        }
+      }
+    }, 100);
+  }
+
+  function performManagerReassignment(personName, newManager) {
+    if (isUpdating) return;
+
+    if (selectedPerson && panelHasUnsavedChanges()) {
+      var proceed = confirm("You have unsaved changes. Continue with drag operation?");
+      if (!proceed) return;
+      closePanel();
+    }
+
+    currentPeople = currentPeople.map(function(p) {
+      if (p.name === personName) {
+        return {
+          name: p.name,
+          title: p.title,
+          manager: newManager
+        };
+      }
+      return p;
+    });
+
+    rebuildAndRender();
+    saveCsvBtn.hidden = false;
+    resetBtn.hidden = false;
+
+    if (hasChanges()) {
+      legendEl.hidden = false;
+    }
+
+    flashMovedCard(personName);
+  }
+
+  function onDragStart(e) {
+    if (isUpdating) {
+      e.preventDefault();
+      return;
+    }
+
+    var card = e.target.closest(".node-card");
+    if (!card) return;
+
+    draggedPersonName = card.getAttribute("data-name");
+    if (!draggedPersonName) return;
+
+    e.dataTransfer.effectAllowed = "move";
+    e.dataTransfer.setData("text/plain", draggedPersonName);
+
+    card.classList.add("drag-source");
+
+    highlightDropTargets(draggedPersonName);
+    addRootDropZone();
+  }
+
+  function onDragEnd(e) {
+    var card = e.target.closest(".node-card");
+    if (card) {
+      card.classList.remove("drag-source");
+    }
+
+    clearDropTargetHighlights();
+    removeRootDropZone();
+    draggedPersonName = null;
+  }
+
+  function onDragOver(e) {
+    if (isUpdating || !draggedPersonName) return;
+
+    e.preventDefault();
+
+    var card = e.target.closest(".node-card, .root-drop-zone");
+    if (!card) return;
+
+    var targetName = card.getAttribute("data-name");
+    var isValid = card.getAttribute("data-drop-valid") === "true";
+
+    if (isValid) {
+      e.dataTransfer.dropEffect = "move";
+    } else {
+      e.dataTransfer.dropEffect = "none";
+    }
+  }
+
+  function onDragEnter(e) {
+    if (isUpdating || !draggedPersonName) return;
+
+    var card = e.target.closest(".node-card, .root-drop-zone");
+    if (!card) return;
+
+    var isValid = card.getAttribute("data-drop-valid") === "true";
+
+    if (isValid) {
+      card.classList.add("drag-over-valid");
+      card.classList.remove("drag-over-invalid");
+    } else {
+      card.classList.add("drag-over-invalid");
+      card.classList.remove("drag-over-valid");
+    }
+  }
+
+  function onDragLeave(e) {
+    var card = e.target.closest(".node-card, .root-drop-zone");
+    if (!card) return;
+
+    card.classList.remove("drag-over-valid", "drag-over-invalid");
+  }
+
+  function onDrop(e) {
+    if (isUpdating || !draggedPersonName) return;
+
+    e.preventDefault();
+    e.stopPropagation();
+
+    var card = e.target.closest(".node-card, .root-drop-zone");
+    if (!card) return;
+
+    var targetName = card.getAttribute("data-name");
+    var isValid = card.getAttribute("data-drop-valid") === "true";
+
+    if (!isValid) return;
+
+    var draggedName = e.dataTransfer.getData("text/plain");
+    if (!draggedName) return;
+
+    performManagerReassignment(draggedName, targetName || "");
+  }
+
   // ── Error display ──
 
   function showError(message) {
@@ -761,6 +984,7 @@
   }
 
   function rebuildAndRender() {
+    isUpdating = true;
     var roots = buildTree(currentPeople);
     renderTree(roots);
     updateStatsBar(roots);
@@ -774,6 +998,7 @@
       applyDefaultExpansion(getDefaultDepth());
     }
     highlightSelectedCard();
+    isUpdating = false;
   }
 
   function addMissingManagers(people) {

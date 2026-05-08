@@ -565,6 +565,72 @@ body.panel-open main#chart {
   cursor: pointer;
 }
 
+/* ── Drag and Drop ── */
+.node-card[draggable="true"] {
+  cursor: grab;
+}
+
+.node-card[draggable="true"]:active {
+  cursor: grabbing;
+}
+
+.drag-source {
+  opacity: 0.4;
+  cursor: grabbing !important;
+}
+
+.drag-active {
+  transition: all 0.2s ease;
+}
+
+.drag-over-valid {
+  border: 2px solid #48bb78 !important;
+  box-shadow: 0 0 8px rgba(72, 187, 120, 0.4);
+  transform: scale(1.02);
+}
+
+.drag-over-invalid {
+  border: 2px solid #f56565 !important;
+  cursor: no-drop !important;
+}
+
+.root-drop-zone {
+  height: 60px;
+  border: 2px dashed #cbd5e0;
+  border-radius: 8px;
+  margin: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #a0aec0;
+  font-size: 14px;
+  transition: all 0.2s ease;
+  background: #f7fafc;
+}
+
+.root-drop-zone.drag-over-valid {
+  border-color: #48bb78;
+  border-style: solid;
+  background: #f0fff4;
+  color: #48bb78;
+  font-weight: 500;
+}
+
+@keyframes flash-moved {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.05);
+    background: #f0fff4;
+    box-shadow: 0 0 12px rgba(72, 187, 120, 0.6);
+  }
+}
+
+.flash-moved {
+  animation: flash-moved 0.5s ease;
+}
+
 /* ── Change legend ── */
 .change-legend {
   display: flex;
