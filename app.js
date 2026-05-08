@@ -1117,11 +1117,82 @@
     }
   }
 
+  function captureExpansionState() {
+    var state = new Map();
+    var treeNodes = chartEl.querySelectorAll(".tree-node");
+
+    for (var i = 0; i < treeNodes.length; i++) {
+      var card = treeNodes[i].querySelector(":scope > .node-card");
+      if (!card) continue;
+
+      var name = card.getAttribute("data-name");
+      if (!name) continue;
+
+      var childrenContainer = treeNodes[i].querySelector(":scope > .children");
+      if (!childrenContainer) continue;
+
+      state.set(name, {
+        collapsed: childrenContainer.classList.contains("collapsed"),
+        expandMode: treeNodes[i].getAttribute("data-expand-mode") || null
+      });
+    }
+
+    return state;
+  }
+
+  function restoreExpansionState(state) {
+    if (!state || state.size === 0) return;
+
+    var treeNodes = chartEl.querySelectorAll(".tree-node");
+
+    for (var i = 0; i < treeNodes.length; i++) {
+      var card = treeNodes[i].querySelector(":scope > .node-card");
+      if (!card) continue;
+
+      var name = card.getAttribute("data-name");
+      if (!name) continue;
+
+      var savedState = state.get(name);
+      if (!savedState) continue;
+
+      var childrenContainer = treeNodes[i].querySelector(":scope > .children");
+      if (!childrenContainer) continue;
+
+      if (savedState.collapsed) {
+        childrenContainer.classList.add("collapsed");
+        updateCardState(card, false);
+      } else {
+        childrenContainer.classList.remove("collapsed");
+        updateCardState(card, true);
+      }
+
+      if (savedState.expandMode) {
+        treeNodes[i].setAttribute("data-expand-mode", savedState.expandMode);
+
+        // Re-apply IC hiding if in managers mode
+        if (savedState.expandMode === "managers") {
+          var childNodes = childrenContainer.querySelectorAll(":scope > .tree-node");
+          childNodes.forEach(function (child) {
+            var childCard = child.querySelector(":scope > .node-card");
+            if (childCard && childCard.classList.contains("leaf")) {
+              child.classList.add("ic-hidden");
+            }
+          });
+        }
+      }
+    }
+  }
+
   function rebuildAndRender() {
     isUpdating = true;
+
+    // Capture current expansion state before rebuilding
+    var expansionState = captureExpansionState();
+
     var roots = buildTree(currentPeople);
     renderTree(roots);
     updateStatsBar(roots);
+
     if (currentViewMode === "expand") {
       expandAll();
     } else if (currentViewMode === "managers") {
@@ -1129,8 +1200,14 @@
     } else if (currentViewMode === "collapse") {
       collapseAll();
     } else {
-      applyDefaultExpansion(getDefaultDepth());
+      // In default mode, restore previous state if we have it
+      if (expansionState.size > 0) {
+        restoreExpansionState(expansionState);
+      } else {
+        applyDefaultExpansion(getDefaultDepth());
+      }
     }
+
     highlightSelectedCard();
     isUpdating = false;
   }
