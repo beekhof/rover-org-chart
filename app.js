@@ -34,6 +34,7 @@
   var currentViewMode = "default";
   var isUpdating = false;
   var draggedPersonName = null;
+  var importedFormat = "standard";
 
   function getChanges() {
     var changes = new Map();
@@ -189,12 +190,28 @@
     const headers = splitCSVRow(headerLine).map((h) => h.trim().toLowerCase());
 
     const nameIdx = headers.indexOf("name");
-    const titleIdx = headers.indexOf("title");
-    const managerIdx = headers.indexOf("manager");
     const locationIdx = headers.indexOf("location");
 
-    if (nameIdx === -1 || titleIdx === -1 || managerIdx === -1) {
-      return { error: "columns" };
+    // Detect format
+    const userIdIdx = headers.indexOf("user id");
+    const jobTitleIdx = headers.indexOf("job title");
+    const managerUidIdx = headers.indexOf("manager uid");
+    const isRoverFormat = userIdIdx !== -1 && managerUidIdx !== -1;
+
+    let titleIdx, managerIdx;
+
+    if (isRoverFormat) {
+      titleIdx = jobTitleIdx;
+      managerIdx = -1; // Manager UID will be resolved later
+      if (nameIdx === -1 || titleIdx === -1) {
+        return { error: "columns" };
+      }
+    } else {
+      titleIdx = headers.indexOf("title");
+      managerIdx = headers.indexOf("manager");
+      if (nameIdx === -1 || titleIdx === -1 || managerIdx === -1) {
+        return { error: "columns" };
+      }
     }
 
     const colCount = headers.length;
@@ -205,16 +222,44 @@
       if (cols.length !== colCount) continue;
 
       const name = cols[nameIdx].trim();
-      const title = cols[titleIdx].trim();
-      const manager = cols[managerIdx].trim();
-      const location = locationIdx !== -1 ? cols[locationIdx].trim() : "";
-
       if (!name) continue;
 
-      people.push({ name, title, manager, location });
+      const title = cols[titleIdx].trim();
+      const location = locationIdx !== -1 ? cols[locationIdx].trim() : "";
+
+      if (isRoverFormat) {
+        const userId = userIdIdx !== -1 ? cols[userIdIdx].trim() : "";
+        const managerUid = managerUidIdx !== -1 ? cols[managerUidIdx].trim() : "";
+        people.push({ name, title, manager: "", location, userId, managerUid });
+      } else {
+        const manager = cols[managerIdx].trim();
+        const userId = "";
+        people.push({ name, title, manager, location, userId });
+      }
     }
 
     if (people.length === 0) return { error: "no_data" };
+
+    // Resolve Manager UIDs to names if Rover format
+    if (isRoverFormat) {
+      const uidToName = new Map();
+      for (const p of people) {
+        if (p.userId) {
+          uidToName.set(p.userId, p.name);
+        }
+      }
+
+      for (const p of people) {
+        if (p.managerUid) {
+          p.manager = uidToName.get(p.managerUid) || "";
+        }
+        delete p.managerUid;
+      }
+    }
+
+    // Set format flag
+    importedFormat = isRoverFormat ? "rover" : "standard";
+
     return { people };
   }
 
@@ -260,6 +305,7 @@
         title: p.title,
         manager: p.manager,
         location: p.location || "",
+        userId: p.userId || "",
         children: [],
       });
     }
@@ -271,6 +317,7 @@
           title: "",
           manager: "",
           location: "",
+          userId: "",
           children: [],
         });
       }
@@ -849,7 +896,8 @@
           name: p.name,
           title: p.title,
           manager: newManager,
-          location: p.location || ""
+          location: p.location || "",
+          userId: p.userId || ""
         };
       }
       return p;
@@ -1024,7 +1072,7 @@
       var mgr = people[i].manager;
       if (mgr && !names.has(mgr)) {
         names.add(mgr);
-        toAdd.push({ name: mgr, title: "", manager: "", location: "" });
+        toAdd.push({ name: mgr, title: "", manager: "", location: "", userId: "" });
       }
     }
     return people.concat(toAdd);
@@ -1111,9 +1159,9 @@
 
     currentPeople = currentPeople.map(function (p) {
       if (p.name === selectedPerson) {
-        return { name: p.name, title: newTitle, manager: newManager, location: newLocation };
+        return { name: p.name, title: newTitle, manager: newManager, location: newLocation, userId: p.userId || "" };
       }
-      return { name: p.name, title: p.title, manager: p.manager, location: p.location || "" };
+      return { name: p.name, title: p.title, manager: p.manager, location: p.location || "", userId: p.userId || "" };
     });
 
     var savedName = selectedPerson;
@@ -1124,11 +1172,44 @@
   });
 
   saveCsvBtn.addEventListener("click", function () {
-    var lines = ["Name,Title,Manager,Location"];
+    var lines = [];
 
-    for (var i = 0; i < currentPeople.length; i++) {
-      var p = currentPeople[i];
-      lines.push(csvEscape(p.name) + "," + csvEscape(p.title) + "," + csvEscape(p.manager) + "," + csvEscape(p.location || ""));
+    if (importedFormat === "rover") {
+      // Rover format export
+      lines.push('"Name","User ID","Job Title","Location","Manager UID"');
+
+      // Create Name → User ID mapping for manager resolution
+      var nameToUid = new Map();
+      for (var i = 0; i < currentPeople.length; i++) {
+        if (currentPeople[i].userId) {
+          nameToUid.set(currentPeople[i].name, currentPeople[i].userId);
+        }
+      }
+
+      for (var i = 0; i < currentPeople.length; i++) {
+        var p = currentPeople[i];
+        var managerUid = p.manager ? (nameToUid.get(p.manager) || "") : "";
+
+        lines.push(
+          csvEscape(p.name) + "," +
+          csvEscape(p.userId || "") + "," +
+          csvEscape(p.title) + "," +
+          csvEscape(p.location || "") + "," +
+          csvEscape(managerUid)
+        );
+      }
+    } else {
+      // Standard format export
+      lines.push("Name,Title,Manager,Location");
+      for (var i = 0; i < currentPeople.length; i++) {
+        var p = currentPeople[i];
+        lines.push(
+          csvEscape(p.name) + "," +
+          csvEscape(p.title) + "," +
+          csvEscape(p.manager) + "," +
+          csvEscape(p.location || "")
+        );
+      }
     }
 
     var csvText = lines.join("\n") + "\n";
